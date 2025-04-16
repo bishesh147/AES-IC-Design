@@ -1,8 +1,14 @@
-module uart_transmitter(
+module uart_transmitter
+#(
+    parameter CLK_SPEED = 100_000_000,
+    parameter BAUD_RATE = 625000,
+    parameter COUNT_DIV = CLK_SPEED / BAUD_RATE
+)
+(
     input logic clk, rst,
     input [7:0] data_in,
     input start,
-    output serial_out
+    output serial_out, ready
 );
     typedef enum logic[0:0] {
         IDLE = 1'b0,
@@ -30,8 +36,8 @@ module uart_transmitter(
     end
 
     always_comb begin
-        counter_rst = (counter_reg == 868);
-        counter_next = (counter_rst) ? 0 : counter_reg + 1;
+        counter_rst = (counter_reg == COUNT_DIV-1);
+        counter_next = counter_reg;
         data_cnt_next = data_cnt_reg;
         state_next = state_reg;
         data_next = data_reg;
@@ -43,6 +49,7 @@ module uart_transmitter(
                 end
             end
             SENDING : begin
+                counter_next = (counter_rst) ? 0 : counter_reg + 1;
                 if (counter_rst) begin
                     data_cnt_next = (data_cnt_reg == 9) ? 0 : data_cnt_reg + 1;
                     data_next = {1'b1, data_reg[9:1]};
@@ -52,4 +59,5 @@ module uart_transmitter(
         endcase
     end
     assign serial_out = data_reg[0];
+    assign ready = (state_reg == IDLE);
 endmodule
